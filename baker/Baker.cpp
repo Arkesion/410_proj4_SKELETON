@@ -53,48 +53,41 @@ void Baker::bake_and_box(ORDER &anOrder) {
 
 void Baker::beBaker() {
 	
-	while (!b_WaiterIsFinished) {
+	while (true) {
 
-		{
-			unique_lock<mutex> lck(mutex_order_inQ);
+		unique_lock<mutex> lck(mutex_order_inQ);
+
+		if (order_in_Q.empty() && b_WaiterIsFinished) {
+			break;
+		}
+
+		while (order_in_Q.empty() && !b_WaiterIsFinished) {
 			cv_order_inQ.wait(lck);
 		}
 
-		ORDER ord;
 
-		{
-			lock_guard<mutex> lck(mutex_order_inQ);
-
-			ord = order_in_Q.front();
-			order_in_Q.pop();
-		}
-
-		this -> bake_and_box(ord);
-
-		{
-			lock_guard<mutex> lck(mutex_order_outQ);
-			order_out_Vector.push_back(ord);
-		}
-
-		while (!order_in_Q.empty()) {
+		if (!order_in_Q.empty()) {
 
 			ORDER ord;
 
-			{
-				lock_guard<mutex> lck(mutex_order_inQ);
+			ord = order_in_Q.front();
+			order_in_Q.pop();
 
-				ord = order_in_Q.front();
-				order_in_Q.pop();
-			}
 
 			this -> bake_and_box(ord);
 
-			{
-				lock_guard<mutex> lck(mutex_order_outQ);
-				order_out_Vector.push_back(ord);
-			}
+			order_out_Vector.push_back(ord);
+
+			ord = order_in_Q.front();
+			order_in_Q.pop();
+
+			this -> bake_and_box(ord);
+
+			order_out_Vector.push_back(ord);
+
 		}
 
 	}
 
 }
+
